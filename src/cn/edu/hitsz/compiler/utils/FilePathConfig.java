@@ -4,28 +4,27 @@ package cn.edu.hitsz.compiler.utils;
  * 程序中可能用到的各种路径
  */
 public final class FilePathConfig {
+    private static boolean isExtra = false;  // Set this to true for extra mode, false otherwise
     //==================================== 输入文件 ========================================//
     /**
      * 输入的待编译的源代码
      */
-    public static final String SRC_CODE_PATH = "data/in/input_code.txt";
-    //public static final String SRC_CODE_PATH = "data/in/input_code_extra.txt";
+    public static final String SRC_CODE_PATH = isExtra ? "data/in/input_code_extra.txt" : "data/in/input_code.txt";
 
     /**
      * 编码表
      */
-    public static final String CODING_MAP_PATH = "data/in/coding_map.csv";
-    //public static final String CODING_MAP_PATH = "data/in/coding_map_extra.csv";
+    public static final String CODING_MAP_PATH = isExtra ? "data/in/coding_map_extra.csv" : "data/in/coding_map.csv";
 
     /**
      * 语法文件
      */
-    public final static String GRAMMAR_PATH = "data/in/grammar.txt";
+    public final static String GRAMMAR_PATH = isExtra ? "data/in/grammar_extra.txt" : "data/in/grammar.txt";
 
     /**
      * 第三方工具构造的 LR 分析表
      */
-    public final static String LR1_TABLE_PATH = "data/in/LR1_table.csv";
+    public final static String LR1_TABLE_PATH = isExtra ? "data/in/LR1_table_extra.csv" : "data/in/LR1_table.csv";
 
 
     //==================================== 输出文件 ========================================//
@@ -65,5 +64,8 @@ public final class FilePathConfig {
     public static final String ASSEMBLY_LANGUAGE_PATH = "data/out/assembly_language.asm";
 
     private FilePathConfig() {
+    }
+    public static void SetExtra(boolean isExtra) {
+        FilePathConfig.isExtra = isExtra;
     }
 }
