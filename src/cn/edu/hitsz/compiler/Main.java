@@ -51,19 +51,18 @@ public class Main {
         parser.registerObserver(productionCollector);
 
         // 加入用作语义检查的 Observer
-//        final var semanticAnalyzer = new SemanticAnalyzer();
-//        parser.registerObserver(semanticAnalyzer);
-//
-//        // 加入用作 IR 生成的 Observer
-//        final var irGenerator = new IRGenerator();
-//        parser.registerObserver(irGenerator);
+        final var semanticAnalyzer = new SemanticAnalyzer();
+        parser.registerObserver(semanticAnalyzer);
+
+        // 加入用作 IR 生成的 Observer
+        final var irGenerator = new IRGenerator();
+        parser.registerObserver(irGenerator);
 
         // 执行语法解析并在解析过程中依次调用各 Observer
         parser.run();
 
         // 各 Observer 输出结果
         productionCollector.dumpToFile(FilePathConfig.PARSER_PATH);
-        /*
         symbolTable.dumpTable(FilePathConfig.NEW_SYMBOL_TABLE);
         final var instructions = irGenerator.getIR();
         irGenerator.dumpIR(FilePathConfig.INTERMEDIATE_CODE_PATH);
@@ -72,12 +71,12 @@ public class Main {
         final var emulator = IREmulator.load(instructions);
         FileUtils.writeFile(FilePathConfig.EMULATE_RESULT, emulator.execute().map(Objects::toString).orElse("No return value"));
 
-        // 由 IR 生成汇编
-        final var asmGenerator = new AssemblyGenerator();
-        asmGenerator.loadIR(instructions);
-        asmGenerator.run();
-        asmGenerator.dump(FilePathConfig.ASSEMBLY_LANGUAGE_PATH);
-        */
+//        // 由 IR 生成汇编
+//        final var asmGenerator = new AssemblyGenerator();
+//        asmGenerator.loadIR(instructions);
+//        asmGenerator.run();
+//        asmGenerator.dump(FilePathConfig.ASSEMBLY_LANGUAGE_PATH);
+
     }
 }
-//python -u ./scripts/check-result.py 2 ./data/std ./data/out
+//python -u ./scripts/check-result.py 3 ./data/std ./data/out

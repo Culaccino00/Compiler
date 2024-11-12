@@ -4,7 +4,7 @@ package cn.edu.hitsz.compiler.utils;
  * 程序中可能用到的各种路径
  */
 public final class FilePathConfig {
-    private static boolean isExtra = false;  // Set this to true for extra mode, false otherwise
+    public static boolean isExtra = false;  // Set this to true for extra mode, false otherwise
     //==================================== 输入文件 ========================================//
     /**
      * 输入的待编译的源代码
@@ -65,7 +65,5 @@ public final class FilePathConfig {
 
     private FilePathConfig() {
     }
-    public static void SetExtra(boolean isExtra) {
-        FilePathConfig.isExtra = isExtra;
-    }
+
 }

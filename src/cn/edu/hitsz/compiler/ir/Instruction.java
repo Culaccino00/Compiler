@@ -39,6 +39,9 @@ public class Instruction {
     public static Instruction createMul(IRVariable result, IRValue lhs, IRValue rhs) {
         return new Instruction(InstructionKind.MUL, result, List.of(lhs, rhs));
     }
+    public static Instruction createPow(IRVariable result, IRValue lhs, IRValue rhs) {
+        return new Instruction(InstructionKind.POW, result, List.of(lhs, rhs));
+    }
 
     public static Instruction createMov(IRVariable result, IRValue from) {
         return new Instruction(InstructionKind.MOV, result, List.of(from));
@@ -55,17 +58,17 @@ public class Instruction {
     }
 
     public IRVariable getResult() {
-        ensureKindMatch(Set.of(InstructionKind.ADD, InstructionKind.SUB, InstructionKind.MUL, InstructionKind.MOV));
+        ensureKindMatch(Set.of(InstructionKind.ADD, InstructionKind.SUB, InstructionKind.MUL, InstructionKind.POW, InstructionKind.MOV));
         return result;
     }
 
     public IRValue getLHS() {
-        ensureKindMatch(Set.of(InstructionKind.ADD, InstructionKind.SUB, InstructionKind.MUL));
+        ensureKindMatch(Set.of(InstructionKind.ADD, InstructionKind.SUB, InstructionKind.MUL, InstructionKind.POW));
         return operands.get(0);
     }
 
     public IRValue getRHS() {
-        ensureKindMatch(Set.of(InstructionKind.ADD, InstructionKind.SUB, InstructionKind.MUL));
+        ensureKindMatch(Set.of(InstructionKind.ADD, InstructionKind.SUB, InstructionKind.MUL, InstructionKind.POW));
         return operands.get(1);
     }
 

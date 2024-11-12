@@ -4,7 +4,7 @@ package cn.edu.hitsz.compiler.ir;
  * IR 的种类
  */
 public enum InstructionKind {
-    ADD, SUB, MUL, MOV, RET;
+    ADD, SUB, MUL, MOV, RET, POW;
 
     /**
      * @return IR 是否是二元的 (有返回值, 有两个参数)
