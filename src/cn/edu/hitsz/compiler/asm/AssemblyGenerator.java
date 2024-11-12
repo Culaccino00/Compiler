@@ -1,9 +1,15 @@
 package cn.edu.hitsz.compiler.asm;
 
 import cn.edu.hitsz.compiler.NotImplementedException;
-import cn.edu.hitsz.compiler.ir.Instruction;
+import cn.edu.hitsz.compiler.ir.*;
+import cn.edu.hitsz.compiler.utils.FileUtils;
 
+import javax.swing.text.html.StyleSheet;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 
 /**
@@ -30,11 +36,133 @@ public class AssemblyGenerator {
      *
      * @param originInstructions 前端提供的中间代码
      */
+    //预处理后的中间代码列表
+    private final List<Instruction> newInstructions = new ArrayList<>();
+
+    //变量与寄存器双向Map
+    BMap<IRValue, Register> registerMap = new BMap<>();
+
+    //生成的汇编指令列表
+    private final List<AsmCode> asmCodes = new ArrayList<>();
+
+
+    enum Register {
+        //寄存器枚举
+        t0, t1, t2, t3, t4, t5, t6
+    }
     public void loadIR(List<Instruction> originInstructions) {
         // TODO: 读入前端提供的中间代码并生成所需要的信息
-        throw new NotImplementedException();
+        for (Instruction instruction : originInstructions) {
+            InstructionKind kind = instruction.getKind(); // 获取 IR 指令的种类
+            //遇到Ret指令则直接舍弃后续指令
+            if (kind.isReturn()){
+                newInstructions.add(instruction);
+                break;
+            }
+            if(kind.isUnary()) {
+                //一元指令
+                switch (kind) {
+                    case MOV -> {
+                        //MOV指令
+                        //将源操作数的值赋给目的操作数
+                        //MOV result, from
+                        //result = from
+                        newInstructions.add(instruction);
+                    }
+                    default -> throw new NotImplementedException();
+                }
+            }else if (kind.isBinary()){
+                //二元指令
+                IRValue lhs = instruction.getLHS();
+                IRValue rhs = instruction.getRHS();
+                IRVariable result = instruction.getResult();
+
+                if (lhs.isImmediate() && rhs.isImmediate()){
+                    //两个操作数都是立即数
+                    //直接计算结果
+                    int newresult = 0;
+                    switch (kind) {
+                        case ADD -> newresult = ((IRImmediate)lhs).getValue() + ((IRImmediate)rhs).getValue();
+                        case SUB -> newresult = ((IRImmediate)lhs).getValue() - ((IRImmediate)rhs).getValue();
+                        case MUL -> newresult = ((IRImmediate)lhs).getValue() * ((IRImmediate)rhs).getValue();
+                        case POW -> newresult = (int) Math.pow(((IRImmediate)lhs).getValue(), ((IRImmediate)rhs).getValue());
+                        default -> System.err.println("Unknown instruction kind: " + kind);
+                    }
+                    newInstructions.add(Instruction.createMov(result, IRImmediate.of(newresult)));
+                } else if (lhs.isImmediate() && rhs.isIRVariable()){
+                    switch (kind) {
+                        //加法将左立即数交换到右边即可
+                        case ADD -> newInstructions.add(Instruction.createAdd(result, rhs, lhs));
+                        //其余前插一条 MOV a imm
+                        case SUB -> {
+                            IRVariable temp = IRVariable.temp();
+                            newInstructions.add(Instruction.createMov(temp, lhs));
+                            newInstructions.add(Instruction.createSub(result, temp, rhs));
+                        }
+                        case MUL -> {
+                            IRVariable temp = IRVariable.temp();
+                            newInstructions.add(Instruction.createMov(temp, lhs));
+                            newInstructions.add(Instruction.createMul(result, temp, rhs));
+                        }
+                        case POW -> {
+                            IRVariable temp = IRVariable.temp();
+                            newInstructions.add(Instruction.createMov(temp, lhs));
+                            newInstructions.add(Instruction.createPow(result, temp, rhs));
+                        }
+                        default -> System.err.println("Unknown instruction kind: " + kind);
+                    }
+                } else if (lhs.isIRVariable() && rhs.isImmediate()){
+                    switch (kind) {
+                        case ADD, SUB  -> newInstructions.add(instruction);
+                        case MUL -> {
+                            IRVariable temp = IRVariable.temp();
+                            newInstructions.add(Instruction.createMov(temp, rhs));
+                            newInstructions.add(Instruction.createMul(result, lhs, temp));
+                        }
+                        case POW -> {
+                            IRVariable temp = IRVariable.temp();
+                            newInstructions.add(Instruction.createMov(temp, rhs));
+                            newInstructions.add(Instruction.createPow(result, lhs, temp));
+                        }
+                        default -> System.err.println("Unknown instruction kind: " + kind);
+                    }
+                } else {
+                        newInstructions.add(instruction);
+                }
+            }
+        }
     }
 
+    //分配寄存器
+    public Register getReg(IRValue value, int regIndex){
+        // 若是立即数则直接返回
+        if(value.isImmediate())     return null;
+        // 若已经分配过寄存器则直接返回
+        if(registerMap.containsKey(value))      return registerMap.getByKey(value);
+        // 寻找一个未分配的寄存器
+        for(Register register : Register.values()){
+            if(!registerMap.containsValue(register)){
+                registerMap.replace(value, register);
+                return register;
+            }
+        }
+        // 若所有寄存器都已分配，则分配不再被变量占用的寄存器
+        Set<Register> notUseRegs = Arrays.stream(Register.values()).collect(Collectors.toSet());
+        for (int i = regIndex; i < newInstructions.size(); i++){
+            Instruction instruction = newInstructions.get(i);
+            //遍历搜寻不再使用的变量
+            for(IRValue irValue : instruction.getOperands()){
+                notUseRegs.remove(registerMap.getByKey(irValue));
+            }
+        }
+        // 若找到可用寄存器则分配
+        if(!notUseRegs.isEmpty()){
+            registerMap.replace(value, notUseRegs.iterator().next());
+            return notUseRegs.iterator().next();
+        }
+        // 若没有可用寄存器则抛出异常
+        throw new RuntimeException("No register available");
+    }
 
     /**
      * 执行代码生成.
@@ -47,7 +175,78 @@ public class AssemblyGenerator {
      */
     public void run() {
         // TODO: 执行寄存器分配与代码生成
-        throw new NotImplementedException();
+        int i = 0;
+        asmCodes.add(new AsmCode(".text"));
+        for(Instruction instruction : newInstructions){
+            InstructionKind kind = instruction.getKind();
+            switch (kind){
+                case ADD -> {
+                    IRValue lhs = instruction.getLHS();
+                    IRValue rhs = instruction.getRHS();
+                    IRVariable result = instruction.getResult();
+                    Register lhsReg = getReg(lhs, i);
+                    Register rhsReg = getReg(rhs, i);
+                    Register resultReg = getReg(result, i);
+                    if(rhs.isImmediate()) {
+                        asmCodes.add(AsmCode.createAddi(resultReg.toString(), lhsReg.toString(), rhs, instruction));
+                    }else{
+                        asmCodes.add(AsmCode.createAdd(resultReg.toString(), lhsReg.toString(), rhsReg.toString(), instruction));
+                    }
+                }
+                case SUB -> {
+                    IRValue lhs = instruction.getLHS();
+                    IRValue rhs = instruction.getRHS();
+                    IRVariable result = instruction.getResult();
+                    Register lhsReg = getReg(lhs, i);
+                    Register rhsReg = getReg(rhs, i);
+                    Register resultReg = getReg(result, i);
+                    if(rhs.isImmediate()) {
+                        asmCodes.add(AsmCode.createSubi(resultReg.toString(), lhsReg.toString(), rhs, instruction));
+                    }else{
+                        asmCodes.add(AsmCode.createSub(resultReg.toString(), lhsReg.toString(), rhsReg.toString(), instruction));
+                    }
+                }
+                case MUL -> {
+                    IRValue lhs = instruction.getLHS();
+                    IRValue rhs = instruction.getRHS();
+                    IRVariable result = instruction.getResult();
+                    Register lhsReg = getReg(lhs, i);
+                    Register rhsReg = getReg(rhs, i);
+                    Register resultReg = getReg(result, i);
+                    asmCodes.add(AsmCode.createMul(resultReg.toString(), lhsReg.toString(), rhsReg.toString(), instruction));
+                }
+                case POW -> {
+                    IRValue lhs = instruction.getLHS();
+                    IRValue rhs = instruction.getRHS();
+                    IRVariable result = instruction.getResult();
+                    Register lhsReg = getReg(lhs, i);
+                    Register rhsReg = getReg(rhs, i);
+                    Register resultReg = getReg(result, i);
+                    asmCodes.add(AsmCode.createPow(resultReg.toString(), lhsReg.toString(), rhsReg.toString(), instruction));
+                }
+                case MOV -> {
+                    IRValue from = instruction.getFrom();
+                    IRVariable result = instruction.getResult();
+                    Register fromReg = getReg(from, i);
+                    Register resultReg = getReg(result, i);
+                    if(from.isImmediate()) {
+                        asmCodes.add(AsmCode.createLi(resultReg.toString(), from, instruction));
+                    }else{
+                        asmCodes.add(AsmCode.createMv(resultReg.toString(), fromReg.toString(), instruction));
+                    }
+                }
+                case RET -> {
+                    IRValue returnValue = instruction.getReturnValue();
+                    Register returnValueReg = getReg(returnValue, i);
+                    asmCodes.add(AsmCode.createRet(returnValueReg.toString(), instruction));
+                }
+                default -> System.err.println("error asm!");
+            }
+            i ++;
+            if(kind == InstructionKind.RET){
+                break;
+            }
+        }
     }
 
 
@@ -58,7 +257,7 @@ public class AssemblyGenerator {
      */
     public void dump(String path) {
         // TODO: 输出汇编代码到文件
-        throw new NotImplementedException();
+        FileUtils.writeLines(path, asmCodes.stream().map(AsmCode::toString).toList());
     }
 }
 
