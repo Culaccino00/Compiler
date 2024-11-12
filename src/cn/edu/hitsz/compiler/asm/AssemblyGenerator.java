@@ -28,14 +28,6 @@ import java.util.stream.Collectors;
  */
 public class AssemblyGenerator {
 
-    /**
-     * 加载前端提供的中间代码
-     * <br>
-     * 视具体实现而定, 在加载中或加载后会生成一些在代码生成中会用到的信息. 如变量的引用
-     * 信息. 这些信息可以通过简单的映射维护, 或者自行增加记录信息的数据结构.
-     *
-     * @param originInstructions 前端提供的中间代码
-     */
     //预处理后的中间代码列表
     private final List<Instruction> newInstructions = new ArrayList<>();
 
@@ -50,6 +42,15 @@ public class AssemblyGenerator {
         //寄存器枚举
         t0, t1, t2, t3, t4, t5, t6
     }
+
+    /**
+     * 加载前端提供的中间代码
+     * <br>
+     * 视具体实现而定, 在加载中或加载后会生成一些在代码生成中会用到的信息. 如变量的引用
+     * 信息. 这些信息可以通过简单的映射维护, 或者自行增加记录信息的数据结构.
+     *
+     * @param originInstructions 前端提供的中间代码
+     */
     public void loadIR(List<Instruction> originInstructions) {
         // TODO: 读入前端提供的中间代码并生成所需要的信息
         for (Instruction instruction : originInstructions) {
@@ -61,16 +62,7 @@ public class AssemblyGenerator {
             }
             if(kind.isUnary()) {
                 //一元指令
-                switch (kind) {
-                    case MOV -> {
-                        //MOV指令
-                        //将源操作数的值赋给目的操作数
-                        //MOV result, from
-                        //result = from
-                        newInstructions.add(instruction);
-                    }
-                    default -> throw new NotImplementedException();
-                }
+                newInstructions.add(instruction);
             }else if (kind.isBinary()){
                 //二元指令
                 IRValue lhs = instruction.getLHS();
